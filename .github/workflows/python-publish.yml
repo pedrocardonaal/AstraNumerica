@@ -1,70 +1,54 @@
-# This workflow will upload a Python Package to PyPI when a release is created
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
 
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
-name: Upload Python Package
+name: AstroNumerica para Safari
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
-  release-build:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Descargar proyecto
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Configurar Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: '3.12'
 
-      - name: Build release distributions
+      - name: Instalar Pygbag
+        run: python -m pip install pygbag
+
+      - name: Compilar juego web
         run: |
-          # NOTE: put your own distribution build steps here.
-          python -m pip install build
-          python -m build
+          python -m pygbag --build .
 
-      - name: Upload distributions
-        uses: actions/upload-artifact@v4
+      - name: Preparar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Subir archivos web
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: release-dists
-          path: dist/
+          path: build/web
 
-  pypi-publish:
-    runs-on: ubuntu-latest
-    needs:
-      - release-build
-    permissions:
-      # IMPORTANT: this permission is mandatory for trusted publishing
-      id-token: write
-
-    # Dedicated environments with protections for publishing are strongly recommended.
-    # For more information, see: https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment#deployment-protection-rules
+  deploy:
     environment:
-      name: pypi
-      # OPTIONAL: uncomment and update to include your PyPI project URL in the deployment status:
-      # url: https://pypi.org/p/YOURPROJECT
-      #
-      # ALTERNATIVE: if your GitHub Release name is the PyPI project version string
-      # ALTERNATIVE: exactly, uncomment the following line instead:
-      # url: https://pypi.org/project/YOURPROJECT/${{ github.event.release.name }}
-
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
     steps:
-      - name: Retrieve release distributions
-        uses: actions/download-artifact@v4
-        with:
-          name: release-dists
-          path: dist/
-
-      - name: Publish release distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist/
+      - name: Publicar juego
+        id: deployment
+        uses: actions/deploy-pages@v4
